@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Bot WhatsApp</title>
+    <!-- Carrega o Tailwind CSS para estilização -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Fonte Inter para um visual mais moderno */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Estilo customizado para o bloco de código */
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div class="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-lg">
+        
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Painel de Controle do Bot</h1>
+        <p class="text-gray-600 mb-6">Use esta interface para adicionar ou remover as respostas automáticas do seu bot.</p>
+
+        <!-- Seção para Adicionar Novas Regras -->
+        <div class="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Adicionar Nova Resposta</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="msg-recebida" class="block text-sm font-medium text-gray-700 mb-1">Se o bot receber:</label>
+                    <input type="text" id="msg-recebida" placeholder="Ex: oi" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label for="msg-resposta" class="block text-sm font-medium text-gray-700 mb-1">O bot deve responder:</label>
+                    <input type="text" id="msg-resposta" placeholder="Ex: Olá! Este é um bot." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <button id="btn-add-regra" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors duration-200">
+                    Adicionar Regra
+                </button>
+            </div>
+        </div>
+
+        <!-- Seção para Ver as Regras Atuais -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Regras Atuais</h2>
+            <div id="lista-regras" class="space-y-3">
+                <!-- As regras serão injetadas aqui pelo JavaScript -->
+            </div>
+        </div>
+
+        <!-- Seção de Exportação (A parte mais importante) -->
+        <div>
+            <h2 class="text-xl font-semibold text-gray-700 mb-2">Código para Exportar</h2>
+            <p class="text-sm text-gray-600 mb-4">
+                <strong>COMO USAR:</strong> Após editar suas regras, copie o bloco de código abaixo e cole-o dentro do seu arquivo 
+                <code class="text-sm bg-gray-200 text-red-600 p-1 rounded">bot_whatsapp_conceitual.js</code>, 
+                substituindo o <code class="text-sm bg-gray-200 text-red-600 p-1 rounded">const mapaDeRespostas = { ... };</code> antigo.
+            </p>
+            <pre id="codigo-exportado" class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto">
+                <!-- O código gerado para o mapaDeRespostas aparecerá aqui -->
+            </pre>
+        </div>
+    </div>
+
+    <script>
+        // Lógica do Painel de Controle
+
+        // Estado inicial (espelhado do seu arquivo .js)
+        let mapaDeRespostas = {
+          'bom dia': 'Bom dia! 👋 Este é um bot de resposta automática.',
+          'boa tarde': 'Boa tarde! 👋 Este é um bot de resposta automática.',
+          'boa noite': 'Boa noite! 👋 Este é um bot de resposta automática.',
+          'olá': 'Olá! No momento não posso responder.',
+          'oi': 'Oie! Resposta automática.',
+          'tudo bem?': 'Tudo ótimo, mas sou um robô! 🤖',
+          'ajuda': 'Este bot responde mensagens pré-definidas. Deixe seu recado que um humano responderá em breve.',
+          'preço': 'Informações sobre preço serão enviadas por um atendente humano.',
+        };
+
+        // Selecionando os elementos do HTML
+        const listaRegrasEl = document.getElementById('lista-regras');
+        const btnAdd = document.getElementById('btn-add-regra');
+        const inputMsg = document.getElementById('msg-recebida');
+        const inputResp = document.getElementById('msg-resposta');
+        const outputCodigoEl = document.getElementById('codigo-exportado');
+
+        // --- Funções Principais ---
+
+        /**
+         * Redesenha a lista de regras na tela.
+         */
+        function renderizarLista() {
+            // Limpa a lista antiga
+            listaRegrasEl.innerHTML = '';
+
+            // Pega as chaves (mensagens recebidas) do nosso mapa
+            const chaves = Object.keys(mapaDeRespostas);
+
+            if (chaves.length === 0) {
+                listaRegrasEl.innerHTML = '<p class="text-gray-500 italic">Nenhuma regra cadastrada.</p>';
+                return;
+            }
+
+            // Cria um item na lista para cada regra
+            chaves.forEach(chave => {
+                const resposta = mapaDeRespostas[chave];
+                
+                const itemEl = document.createElement('div');
+                itemEl.className = 'flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200';
+                
+                itemEl.innerHTML = `
+                    <div class="flex-1 overflow-hidden mr-4">
+                        <p class="text-sm text-gray-800 font-medium truncate">
+                            <strong>Receber:</strong> ${chave}
+                        </p>
+                        <p class="text-sm text-gray-600 truncate">
+                            <strong>Responder:</strong> ${resposta}
+                        </p>
+                    </div>
+                    <button 
+                        data-key="${chave}" 
+                        class="btn-excluir flex-shrink-0 bg-red-100 text-red-700 font-semibold py-2 px-3 rounded-lg text-sm hover:bg-red-200 transition-colors"
+                    >
+                        Excluir
+                    </button>
+                `;
+                listaRegrasEl.appendChild(itemEl);
+            });
+
+            // Adiciona os eventos de clique aos novos botões de excluir
+            adicionarEventosExcluir();
+        }
+
+        /**
+         * Adiciona uma nova regra ao mapa.
+         */
+        function adicionarRegra() {
+            const msg = inputMsg.value.toLowerCase().trim();
+            const resp = inputResp.value.trim();
+
+            if (!msg || !resp) {
+                // Não usamos alert(), apenas retornamos
+                console.warn("Campos vazios, regra não adicionada.");
+                return;
+            }
+
+            // Adiciona ou atualiza a regra no objeto
+            mapaDeRespostas[msg] = resp;
+
+            // Limpa os campos do formulário
+            inputMsg.value = '';
+            inputResp.value = '';
+
+            // Atualiza a tela
+            renderizarLista();
+            gerarCodigoExportar();
+        }
+
+        /**
+         * Exclui uma regra do mapa.
+         */
+        function excluirRegra(chave) {
+            if (mapaDeRespostas[chave]) {
+                delete mapaDeRespostas[chave];
+                
+                // Atualiza a tela
+                renderizarLista();
+                gerarCodigoExportar();
+            }
+        }
+
+        /**
+         * Adiciona os event listeners aos botões de excluir
+         */
+        function adicionarEventosExcluir() {
+            document.querySelectorAll('.btn-excluir').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const chaveParaExcluir = e.target.dataset.key;
+                    excluirRegra(chaveParaExcluir);
+                });
+            });
+        }
+
+        /**
+         * Gera o bloco de código final para ser copiado.
+         */
+        function gerarCodigoExportar() {
+            const header = 'const mapaDeRespostas = ';
+            // Converte o objeto JavaScript em uma string JSON formatada
+            const jsonString = JSON.stringify(mapaDeRespostas, null, 2); 
+            
+            outputCodigoEl.textContent = header + jsonString + ';';
+        }
+
+        // --- Inicialização ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Adiciona o evento de clique ao botão principal
+            btnAdd.addEventListener('click', adicionarRegra);
+
+            // Renderiza a lista inicial ao carregar a página
+            renderizarLista();
+
+            // Gera o código de exportação inicial
+            gerarCodigoExportar();
+        });
+
+    </script>
+</body>
+</html>
+
