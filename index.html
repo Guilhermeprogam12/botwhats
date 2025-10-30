@@ -3,39 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel do Bot WhatsApp</title>
-    <!-- Carrega o Tailwind CSS para estilização -->
+    <title>Painel do Bot (Airtable)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Fonte Inter para um visual mais moderno */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        /* Estilo customizado para o bloco de código */
-        pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
+        body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
 
     <div class="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-lg">
         
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Painel de Controle do Bot</h1>
-        <p class="text-gray-600 mb-6">Use esta interface para adicionar ou remover as respostas automáticas do seu bot.</p>
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Painel de Controle (Airtable)</h1>
+        <p class="text-gray-600 mb-6">Este painel se conecta diretamente ao seu banco de dados Airtable para adicionar e remover regras.</p>
+        
 
         <!-- Seção para Adicionar Novas Regras -->
         <div class="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
             <h2 class="text-xl font-semibold text-gray-700 mb-4">Adicionar Nova Resposta</h2>
             <div class="space-y-4">
                 <div>
-                    <label for="msg-recebida" class="block text-sm font-medium text-gray-700 mb-1">Se o bot receber:</label>
+                    <label for="msg-recebida" class="block text-sm font-medium text-gray-700 mb-1">Se o bot receber (Recebido):</label>
                     <input type="text" id="msg-recebida" placeholder="Ex: oi" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
                 <div>
-                    <label for="msg-resposta" class="block text-sm font-medium text-gray-700 mb-1">O bot deve responder:</label>
+                    <label for="msg-resposta" class="block text-sm font-medium text-gray-700 mb-1">O bot deve responder (Resposta):</label>
                     <input type="text" id="msg-resposta" placeholder="Ex: Olá! Este é um bot." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
                 <button id="btn-add-regra" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors duration-200">
@@ -46,69 +38,173 @@
 
         <!-- Seção para Ver as Regras Atuais -->
         <div class="mb-8">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Regras Atuais</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-700">Regras Atuais</h2>
+                <button id="btn-recarregar" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg text-sm hover:bg-gray-300 transition-colors">
+                    Recarregar
+                </button>
+            </div>
             <div id="lista-regras" class="space-y-3">
+                <p class="text-gray-500 italic">Carregando regras do Airtable...</p>
                 <!-- As regras serão injetadas aqui pelo JavaScript -->
             </div>
         </div>
+    </div>
 
-        <!-- Seção de Exportação (A parte mais importante) -->
-        <div>
-            <h2 class="text-xl font-semibold text-gray-700 mb-2">Código para Exportar</h2>
-            <p class="text-sm text-gray-600 mb-4">
-                <strong>COMO USAR:</strong> Após editar suas regras, copie o bloco de código abaixo e cole-o dentro do seu arquivo 
-                <code class="text-sm bg-gray-200 text-red-600 p-1 rounded">bot_whatsapp_conceitual.js</code>, 
-                substituindo o <code class="text-sm bg-gray-200 text-red-600 p-1 rounded">const mapaDeRespostas = { ... };</code> antigo.
-            </p>
-            <pre id="codigo-exportado" class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto">
-                <!-- O código gerado para o mapaDeRespostas aparecerá aqui -->
-            </pre>
-        </div>
+    <!-- Div para Pop-ups de Status -->
+    <div id="status-popup" class="fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white transition-all duration-300 translate-x-[200%]">
+        Mensagem de status
     </div>
 
     <script>
-        // Lógica do Painel de Controle
+        // --- Configuração do Airtable ---
+        const AIRTABLE_BASE_ID = 'appQpKChWoOGcsHE0'; 
+        const AIRTABLE_TOKEN = 'pathYHzTgSzO9jWlj.e25f6fb209fb44a7d5d556f7f539b0aa7369a66432e519290eda84821c400a71';
+        const AIRTABLE_TABLE_NAME = 'Bot'; 
+        
+        // Nomes das colunas (precisa ser IDÊNTICO ao Airtable)
+        const COLUNA_RECEBIDO = 'Recebido';
+        const COLUNA_RESPOSTA = 'Resposta';
 
-        // Estado inicial (espelhado do seu arquivo .js)
-        let mapaDeRespostas = {
-          'bom dia': 'Bom dia! 👋 Este é um bot de resposta automática.',
-          'boa tarde': 'Boa tarde! 👋 Este é um bot de resposta automática.',
-          'boa noite': 'Boa noite! 👋 Este é um bot de resposta automática.',
-          'olá': 'Olá! No momento não posso responder.',
-          'oi': 'Oie! Resposta automática.',
-          'tudo bem?': 'Tudo ótimo, mas sou um robô! 🤖',
-          'ajuda': 'Este bot responde mensagens pré-definidas. Deixe seu recado que um humano responderá em breve.',
-          'preço': 'Informações sobre preço serão enviadas por um atendente humano.',
+        // URL da API do Airtable
+        const API_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`;
+        
+        // Cabeçalhos de Autenticação
+        const AUTH_HEADERS = {
+            'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+            'Content-Type': 'application/json'
         };
 
-        // Selecionando os elementos do HTML
+        // --- Seletores de Elementos ---
         const listaRegrasEl = document.getElementById('lista-regras');
         const btnAdd = document.getElementById('btn-add-regra');
+        const btnRecarregar = document.getElementById('btn-recarregar');
         const inputMsg = document.getElementById('msg-recebida');
         const inputResp = document.getElementById('msg-resposta');
-        const outputCodigoEl = document.getElementById('codigo-exportado');
+        const statusPopup = document.getElementById('status-popup');
 
-        // --- Funções Principais ---
+        // --- Funções de Feedback (Pop-up) ---
+        function mostrarStatus(mensagem, sucesso = true) {
+            statusPopup.textContent = mensagem;
+            statusPopup.className = `fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white transition-all duration-300 ${sucesso ? 'bg-green-600' : 'bg-red-600'} translate-x-0`;
+            
+            setTimeout(() => {
+                statusPopup.className = statusPopup.className.replace('translate-x-0', 'translate-x-[200%]');
+            }, 3000);
+        }
+
+        // --- Funções da API Airtable ---
 
         /**
-         * Redesenha a lista de regras na tela.
+         * 1. BUSCAR (GET) todas as regras do Airtable
          */
-        function renderizarLista() {
-            // Limpa a lista antiga
-            listaRegrasEl.innerHTML = '';
+        async function carregarRegras() {
+            listaRegrasEl.innerHTML = '<p class="text-gray-500 italic">Carregando regras do Airtable...</p>';
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: AUTH_HEADERS
+                });
 
-            // Pega as chaves (mensagens recebidas) do nosso mapa
-            const chaves = Object.keys(mapaDeRespostas);
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.statusText}`);
+                }
 
-            if (chaves.length === 0) {
-                listaRegrasEl.innerHTML = '<p class="text-gray-500 italic">Nenhuma regra cadastrada.</p>';
+                const data = await response.json();
+                renderizarLista(data.records);
+            } catch (error) {
+                console.error('Erro ao carregar regras:', error);
+                listaRegrasEl.innerHTML = '<p class="text-red-500 font-semibold">Falha ao carregar regras. Verifique o console.</p>';
+                mostrarStatus('Falha ao carregar regras', false);
+            }
+        }
+
+        /**
+         * 2. ADICIONAR (POST) uma nova regra
+         */
+        async function adicionarRegra() {
+            const msg = inputMsg.value.toLowerCase().trim();
+            const resp = inputResp.value.trim();
+
+            if (!msg || !resp) {
+                mostrarStatus('Preencha os dois campos!', false);
                 return;
             }
 
-            // Cria um item na lista para cada regra
-            chaves.forEach(chave => {
-                const resposta = mapaDeRespostas[chave];
+            const payload = {
+                fields: {
+                    [COLUNA_RECEBIDO]: msg,
+                    [COLUNA_RESPOSTA]: resp
+                }
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: AUTH_HEADERS,
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.statusText}`);
+                }
                 
+                inputMsg.value = '';
+                inputResp.value = '';
+                mostrarStatus('Regra adicionada com sucesso!', true);
+                await carregarRegras(); // Recarrega a lista
+
+            } catch (error) {
+                console.error('Erro ao adicionar regra:', error);
+                mostrarStatus('Falha ao adicionar regra', false);
+            }
+        }
+
+        /**
+         * 3. EXCLUIR (DELETE) uma regra
+         */
+        async function excluirRegra(recordId) {
+            if (!recordId) return;
+            
+            // Não usamos confirm() pois pode ser bloqueado
+            console.log(`Tentando excluir: ${recordId}`);
+            
+            try {
+                const response = await fetch(`${API_URL}/${recordId}`, {
+                    method: 'DELETE',
+                    headers: AUTH_HEADERS
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.statusText}`);
+                }
+                
+                mostrarStatus('Regra excluída com sucesso!', true);
+                await carregarRegras(); // Recarrega a lista
+
+            } catch (error) {
+                console.error('Erro ao excluir regra:', error);
+                mostrarStatus('Falha ao excluir regra', false);
+            }
+        }
+
+        /**
+         * 4. RENDERIZAR a lista na tela
+         */
+        function renderizarLista(records) {
+            listaRegrasEl.innerHTML = ''; // Limpa a lista
+
+            if (!records || records.length === 0) {
+                listaRegrasEl.innerHTML = '<p class="text-gray-500 italic">Nenhuma regra cadastrada no Airtable.</p>';
+                return;
+            }
+
+            records.forEach(record => {
+                const chave = record.fields[COLUNA_RECEBIDO] || 'N/A';
+                const resposta = record.fields[COLUNA_RESPOSTA] || 'N/A';
+                const id = record.id; // O ID único do registro no Airtable
+
                 const itemEl = document.createElement('div');
                 itemEl.className = 'flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200';
                 
@@ -122,7 +218,7 @@
                         </p>
                     </div>
                     <button 
-                        data-key="${chave}" 
+                        data-id="${id}" 
                         class="btn-excluir flex-shrink-0 bg-red-100 text-red-700 font-semibold py-2 px-3 rounded-lg text-sm hover:bg-red-200 transition-colors"
                     >
                         Excluir
@@ -131,83 +227,30 @@
                 listaRegrasEl.appendChild(itemEl);
             });
 
-            // Adiciona os eventos de clique aos novos botões de excluir
-            adicionarEventosExcluir();
-        }
-
-        /**
-         * Adiciona uma nova regra ao mapa.
-         */
-        function adicionarRegra() {
-            const msg = inputMsg.value.toLowerCase().trim();
-            const resp = inputResp.value.trim();
-
-            if (!msg || !resp) {
-                // Não usamos alert(), apenas retornamos
-                console.warn("Campos vazios, regra não adicionada.");
-                return;
-            }
-
-            // Adiciona ou atualiza a regra no objeto
-            mapaDeRespostas[msg] = resp;
-
-            // Limpa os campos do formulário
-            inputMsg.value = '';
-            inputResp.value = '';
-
-            // Atualiza a tela
-            renderizarLista();
-            gerarCodigoExportar();
-        }
-
-        /**
-         * Exclui uma regra do mapa.
-         */
-        function excluirRegra(chave) {
-            if (mapaDeRespostas[chave]) {
-                delete mapaDeRespostas[chave];
-                
-                // Atualiza a tela
-                renderizarLista();
-                gerarCodigoExportar();
-            }
-        }
-
-        /**
-         * Adiciona os event listeners aos botões de excluir
-         */
-        function adicionarEventosExcluir() {
+            // Adiciona eventos aos novos botões de excluir
             document.querySelectorAll('.btn-excluir').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    const chaveParaExcluir = e.target.dataset.key;
-                    excluirRegra(chaveParaExcluir);
+                    const recordId = e.target.dataset.id;
+                    excluirRegra(recordId);
                 });
             });
         }
 
-        /**
-         * Gera o bloco de código final para ser copiado.
-         */
-        function gerarCodigoExportar() {
-            const header = 'const mapaDeRespostas = ';
-            // Converte o objeto JavaScript em uma string JSON formatada
-            const jsonString = JSON.stringify(mapaDeRespostas, null, 2); 
-            
-            outputCodigoEl.textContent = header + jsonString + ';';
-        }
-
         // --- Inicialização ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Adiciona o evento de clique ao botão principal
+            // Não precisamos mais da checagem 'SEU_BASE_ID_AQUI' pois já está preenchido
+            if (!AIRTABLE_BASE_ID || !AIRTABLE_TOKEN) {
+                listaRegrasEl.innerHTML = '<p class="text-red-600 font-bold text-lg">ERRO: Falha ao carregar as chaves da API.</p>';
+                return;
+            }
+            
+            // Carrega as regras ao iniciar
+            carregarRegras();
+
+            // Adiciona eventos aos botões
             btnAdd.addEventListener('click', adicionarRegra);
-
-            // Renderiza a lista inicial ao carregar a página
-            renderizarLista();
-
-            // Gera o código de exportação inicial
-            gerarCodigoExportar();
+            btnRecarregar.addEventListener('click', carregarRegras);
         });
-
     </script>
 </body>
 </html>
